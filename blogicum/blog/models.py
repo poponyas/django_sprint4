@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
 
 User = get_user_model()
 
@@ -67,6 +67,9 @@ class Post(PublishedModel):
         help_text='Если установить дату и время в будущем — можно '
         'делать отложенные публикации.'
     )
+    image = models.ImageField('Изображение', upload_to='post_images', blank=True)
+
+
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -86,6 +89,7 @@ class Post(PublishedModel):
         verbose_name='Категория'
     )
 
+
     class Meta:
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
@@ -93,3 +97,22 @@ class Post(PublishedModel):
 
     def __str__(self):
         return self.title
+
+
+class Comment(PublishedModel):
+    text = models.TextField('Текст комментария')
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        verbose_name='Публикация',
+        related_name='comments',
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор комментария',
+        related_name='comments',
+    )
+
+    class Meta:
+        ordering = ('-created_at',)

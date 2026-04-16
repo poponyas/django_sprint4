@@ -1,49 +1,45 @@
-from django.shortcuts import render, get_object_or_404
-from django.db.models import Q
-from django.utils import timezone
-from .models import Post, Category
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.views.generic import CreateView, DeleteView, UpdateView
+
+from .forms import PostForm
+from .models import Post
 
 
-def index(request):
-    post_list = Post.objects.select_related(
-        'category', 'location', 'author'
-    ).filter(
-        pub_date__lte=timezone.now(),
-        is_published=True,
-        category__is_published=True
-    )[:5]
+class PostMixin:
+    model = Post
+    template_name = 'blog/create.html'
 
-    context = {'post_list': post_list}
-    return render(request, 'blog/index.html', context)
+class PostCreateView(LoginRequiredMixin, PostMixin, CreateView):
+    form_class = PostForm
 
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
 
-def post_detail(request, post_id):
-    post = get_object_or_404(
-        Post.objects.select_related('category', 'location', 'author'),
-        Q(pub_date__lte=timezone.now())
-        & Q(is_published=True)
-        & Q(category__is_published=True),
-        pk=post_id
-    )
-    return render(request, 'blog/detail.html', {'post': post})
+    def get_success_url(self):
+        return reverse('blog:profile', kwargs={'username': self.request.user.username})
 
 
-def category_posts(request, category_slug):
-    category = get_object_or_404(
-        Category,
-        slug=category_slug,
-        is_published=True
-    )
-    post_list = Post.objects.select_related(
-        'category', 'location', 'author'
-    ).filter(
-        category=category,
-        pub_date__lte=timezone.now(),
-        is_published=True
-    )
+class PostUpdateView(LoginRequiredMixin, PostMixin, UpdateView):
+    form_class = PostForm
 
-    context = {
-        'category': category,
-        'post_list': post_list
-    }
-    return render(request, 'blog/category.html', context)
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect('blog:post_detail', post_id=self.kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+        
+    def get_success_url(self):
+        return reverse('blog:post_detail', kwargs={'post_id': self.kwargs['pk']})
+
+
+class PostDeleteView(LoginRequiredMixin, PostMixin, DeleteView):
+    
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect('blog:post_detail', post_id=self.kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse('blog:profile', kwargs={'username': self.request.user.username})
