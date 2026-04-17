@@ -24,7 +24,7 @@ class SignUp(CreateView):
     template_name = 'registration/registration_form.html'
 
 
-class ProfileView(LoginRequiredMixin, ListView):
+class ProfileView(ListView):
     model = Post
     template_name = 'blog/profile.html'
     context_object_name = 'post_list'
