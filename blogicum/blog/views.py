@@ -1,4 +1,6 @@
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -13,6 +15,50 @@ from django.views.generic import (
 from .forms import CommentForm, PostForm
 from .models import Category, Post
 
+
+class SignUp(CreateView):
+    form_class = UserCreationForm
+    success_url = reverse_lazy('login')
+    template_name = 'registration/registration_form.html'
+
+
+class ProfileView(LoginRequiredMixin, ListView):
+    model = Post
+    template_name = 'blog/profile.html'
+    context_object_name = 'post_list'
+    paginate_by = 10
+
+    def get_queryset(self):
+        self.author = get_object_or_404(User, username=self.kwargs['username'])
+        queryset = self.author.posts.all()
+        
+        if self.request.user != self.author:
+            queryset = queryset.filter(
+                pub_date__lte=timezone.now(),
+                is_published=True,
+                category__is_published=True
+        )
+        return queryset.order_by('-pub_date')
+        
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['profile'] = self.author
+        return context
+    
+class ProfileUpdate(LoginRequiredMixin, UpdateView):
+    model = User
+    fields = ['first_name', 'last_name', 'username', 'email']
+    template_name = 'blog/user.html'
+
+    def get_object(self, queryset=None):
+        return self.request.user
+    
+    def get_success_url(self):
+        return reverse_lazy(
+            'blog:profile', 
+            kwargs={'username': self.request.user.username}
+        )
 
 class HomeBlog(ListView):
     model = Post
@@ -93,7 +139,7 @@ class PostCreateView(LoginRequiredMixin, PostMixin, CreateView):
         form.instance.author = self.request.user
         return super().form_valid(form)
 
-    def get_absolute_url(self):
+    def get_success_url(self):
         return reverse_lazy('blog:profile', kwargs={'username': self.request.user.username})
 
 
@@ -105,7 +151,7 @@ class PostUpdateView(LoginRequiredMixin, PostMixin, UpdateView):
             return redirect('blog:post_detail', post_id=self.kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
         
-    def get_absolute_url(self):
+    def get_success_url(self):
         return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['pk']})
 
 
@@ -116,5 +162,5 @@ class PostDeleteView(LoginRequiredMixin, PostMixin, DeleteView):
             return redirect('blog:post_detail', post_id=self.kwargs['pk'])
         return super().dispatch(request, *args, **kwargs)
 
-    def get_absolute_url(self):
+    def get_success_url(self):
         return reverse_lazy('blog:profile', kwargs={'username': self.request.user.username})

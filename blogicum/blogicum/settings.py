@@ -138,3 +138,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
+
+
+LOGIN_REDIRECT_URL = 'blog:index'
+
+LOGOUT_REDIRECT_URL = 'login'
