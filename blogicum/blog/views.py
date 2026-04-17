@@ -2,6 +2,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.db.models import Count
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -86,14 +87,16 @@ class PostDetailView(DetailView):
     context_object_name = 'post'
     pk_url_kwarg = 'post_id'
 
-    def get_queryset(self):
-        return Post.objects.select_related(
-            'category', 'location', 'author'
-        ).filter(
-            pub_date__lte=timezone.now(),
-            is_published=True,
-            category__is_published=True
-        )
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        
+        if obj.author == self.request.user:
+            return obj
+            
+        if not obj.is_published or obj.pub_date > timezone.now() or not obj.category.is_published:
+            raise Http404("Пост не найден или еще не опубликован")
+            
+        return obj
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
