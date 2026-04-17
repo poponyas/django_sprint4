@@ -4,9 +4,6 @@ from . import views
 
 app_name = 'blog'
 
-handler404 = 'pages.views.page_not_found'
-handler500 = 'pages.views.server_error'
-
 urlpatterns = [
     path('', views.index, name='index'),
     path('posts/<int:post_id>/', views.post_detail, name='post_detail'),
