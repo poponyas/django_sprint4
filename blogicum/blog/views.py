@@ -1,6 +1,7 @@
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -38,7 +39,7 @@ class ProfileView(LoginRequiredMixin, ListView):
                 is_published=True,
                 category__is_published=True
         )
-        return queryset.order_by('-pub_date')
+        return queryset.annotate(comment_count=Count('comments')).order_by('-pub_date')
         
     
     def get_context_data(self, **kwargs):
@@ -74,7 +75,8 @@ class HomeBlog(ListView):
             pub_date__lte=timezone.now(),
             is_published=True,
             category__is_published=True
-        ).order_by('-pub_date')
+        ).annotate(comment_count=Count('comments'))
+        .order_by('-pub_date')
         )
 
 
@@ -118,7 +120,7 @@ class CategoryListView(ListView):
                 category=self.category,
                 pub_date__lte=timezone.now(),
                 is_published=True
-            )
+            ).annotate(comment_count=Count('comments'))
             .order_by('-pub_date')
         )
 
