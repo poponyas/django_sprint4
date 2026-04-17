@@ -67,7 +67,7 @@ class Post(PublishedModel):
         help_text='Если установить дату и время в будущем — можно '
         'делать отложенные публикации.'
     )
-    image = models.ImageField('Изображение', upload_to='media', blank=True)
+    image = models.ImageField('Изображение', upload_to='posts_images/', blank=True)
 
 
     author = models.ForeignKey(

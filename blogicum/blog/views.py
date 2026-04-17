@@ -13,7 +13,7 @@ from django.views.generic import (
 )
 
 from .forms import CommentForm, PostForm
-from .models import Category, Post
+from .models import Category, Comment, Post
 
 
 class SignUp(CreateView):
@@ -164,3 +164,46 @@ class PostDeleteView(LoginRequiredMixin, PostMixin, DeleteView):
 
     def get_success_url(self):
         return reverse_lazy('blog:profile', kwargs={'username': self.request.user.username})
+    
+
+
+class CommentCreateView(LoginRequiredMixin, CreateView):
+    form_class = CommentForm
+
+    def form_valid(self, form):
+        post = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        form.instance.author = self.request.user
+        form.instance.post = post
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['post_id']})
+    
+
+class CommentUpdateView(LoginRequiredMixin, UpdateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect('blog:post_detail', post_id=self.kwargs['post_id'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['post_id']})
+
+
+class CommentDeleteView(LoginRequiredMixin, DeleteView):
+    model = Comment
+    template_name = 'blog/comment.html'
+    pk_url_kwarg = 'comment_id'
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.get_object().author != request.user:
+            return redirect('blog:post_detail', post_id=self.kwargs['post_id'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['post_id']})
