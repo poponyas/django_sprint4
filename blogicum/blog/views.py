@@ -45,7 +45,8 @@ class ProfileView(LoginRequiredMixin, ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['profile'] = self.author
+        profile = get_object_or_404(User, username=self.kwargs['username'])
+        context['profile'] = profile
         return context
     
 class ProfileUpdate(LoginRequiredMixin, UpdateView):
