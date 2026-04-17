@@ -1,57 +1,85 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.views.generic import CreateView, DeleteView, UpdateView
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
 
-from .forms import PostForm
+from .forms import CommentForm, PostForm
 from .models import Category, Post
 
 
-def index(request):
-    post_list = Post.objects.select_related(
-        'category', 'location', 'author'
-    ).filter(
-        pub_date__lte=timezone.now(),
-        is_published=True,
-        category__is_published=True
-    )[:5]
+class HomeBlog(ListView):
+    model = Post
+    template_name = 'blog/index.html'
+    context_object_name = 'post_list'
+    paginate_by = 10
 
-    context = {'post_list': post_list}
-    return render(request, 'blog/index.html', context)
-
-
-def post_detail(request, post_id):
-    post = get_object_or_404(
-        Post.objects.select_related('category', 'location', 'author'),
-        Q(pub_date__lte=timezone.now())
-        & Q(is_published=True)
-        & Q(category__is_published=True),
-        pk=post_id
-    )
-    return render(request, 'blog/detail.html', {'post': post})
+    def get_queryset(self):
+        return (
+            Post.objects.select_related(
+            'category', 'location', 'author'
+        ).filter(
+            pub_date__lte=timezone.now(),
+            is_published=True,
+            category__is_published=True
+        ).order_by('-pub_date')
+        )
 
 
-def category_posts(request, category_slug):
-    category = get_object_or_404(
-        Category,
-        slug=category_slug,
-        is_published=True
-    )
-    post_list = Post.objects.select_related(
-        'category', 'location', 'author'
-    ).filter(
-        category=category,
-        pub_date__lte=timezone.now(),
-        is_published=True
-    )
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'blog/detail.html'
+    context_object_name = 'post'
+    pk_url_kwarg = 'post_id'
 
-    context = {
-        'category': category,
-        'post_list': post_list
-    }
-    return render(request, 'blog/category.html', context)
+    def get_queryset(self):
+        return Post.objects.select_related(
+            'category', 'location', 'author'
+        ).filter(
+            pub_date__lte=timezone.now(),
+            is_published=True,
+            category__is_published=True
+        )
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = CommentForm()
+        context['comments'] = self.object.comments.all()
+        return context
+
+
+class CategoryListView(ListView):
+    model = Post
+    template_name = 'blog/category.html'
+    context_object_name = 'post_list'
+    paginate_by = 10 
+
+    def get_queryset(self):
+        self.category = get_object_or_404(
+            Category,
+            slug=self.kwargs['category_slug'],
+            is_published=True
+        )
+        return (
+            Post.objects.select_related('category', 'location', 'author')
+            .filter(
+                category=self.category,
+                pub_date__lte=timezone.now(),
+                is_published=True
+            )
+            .order_by('-pub_date')
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['category'] = self.category
+        return context
 
 
 class PostMixin:
